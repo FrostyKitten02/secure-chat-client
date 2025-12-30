@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdh"
 	"crypto/hkdf"
@@ -8,6 +9,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"golang.org/x/crypto/chacha20poly1305"
+	"secure-chat-client/client"
+	"secure-chat-client/util"
 )
 
 type RegisterRequest struct {
@@ -33,17 +36,26 @@ func Register(username, email, password string) error {
 	}
 	publicKey := privateKey.PublicKey()
 
-	req := &RegisterRequest{
+	c, cErr := util.CreateClient(nil)
+	if cErr != nil {
+		return errors.New("failed to create client")
+	}
+	body := client.PostAuthRegisterJSONRequestBody{
 		Email:    email,
 		Username: username,
 		Password: password,
 
-		PubKey:     string(publicKey.Bytes()),
+		PubKey:     base64.StdEncoding.EncodeToString(publicKey.Bytes()),
 		EncPrivKey: base64.StdEncoding.EncodeToString(encryptedPrivKey),
 	}
-	//TODO: make api call!
-	if req != nil {
 
+	response, resErr := c.PostAuthRegister(context.Background(), body)
+	if resErr != nil {
+		return errors.New("failed to register user")
+	}
+
+	if !util.Is2xx(response) {
+		return errors.New("failed to register user")
 	}
 
 	return nil

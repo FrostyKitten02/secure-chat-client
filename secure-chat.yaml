@@ -1,0 +1,319 @@
+components:
+  schemas:
+    ChatDto:
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        user:
+          $ref: "#/components/schemas/ChatUserDto"
+      required:
+        - id
+        - user
+      type: object
+    ChatUserDto:
+      additionalProperties: false
+      properties:
+        identityId:
+          type: string
+        pubKey:
+          type: string
+        userId:
+          type: string
+        username:
+          type: string
+      required:
+        - userId
+        - username
+        - identityId
+        - pubKey
+      type: object
+    ErrorDetail:
+      additionalProperties: false
+      properties:
+        location:
+          description: Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
+          type: string
+        message:
+          description: Error message text
+          type: string
+        value:
+          description: The value at the given location
+      type: object
+    ErrorModel:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/ErrorModel.json
+          format: uri
+          readOnly: true
+          type: string
+        detail:
+          description: A human-readable explanation specific to this occurrence of the problem.
+          examples:
+            - Property foo is required but is missing.
+          type: string
+        errors:
+          description: Optional list of individual error details
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+          type: array
+        instance:
+          description: A URI reference that identifies the specific occurrence of the problem.
+          examples:
+            - https://example.com/error-log/abc123
+          format: uri
+          type: string
+        status:
+          description: HTTP status code
+          examples:
+            - 400
+          format: int64
+          type: integer
+        title:
+          description: A short, human-readable summary of the problem type. This value should not change between occurrences of the error.
+          examples:
+            - Bad Request
+          type: string
+        type:
+          default: about:blank
+          description: A URI reference to human-readable documentation for the error.
+          examples:
+            - https://example.com/errors/example
+          format: uri
+          type: string
+      type: object
+    GetChatsResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/GetChatsResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        chats:
+          items:
+            $ref: "#/components/schemas/ChatDto"
+          type: array
+      required:
+        - chats
+      type: object
+    LoginRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/LoginRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        password:
+          type: string
+        username:
+          type: string
+      required:
+        - username
+        - password
+      type: object
+    LoginResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/LoginResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        access_token:
+          type: string
+        encPrivKey:
+          type: string
+        expires_in:
+          format: int64
+          type: integer
+        pubKey:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+      required:
+        - access_token
+        - token_type
+        - expires_in
+        - refresh_token
+        - pubKey
+        - encPrivKey
+      type: object
+    RegisterRequestBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/RegisterRequestBody.json
+          format: uri
+          readOnly: true
+          type: string
+        email:
+          type: string
+        encPrivKey:
+          contentEncoding: base64
+          type: string
+        password:
+          type: string
+        pubKey:
+          contentEncoding: base64
+          type: string
+        username:
+          type: string
+      required:
+        - username
+        - email
+        - password
+        - pubKey
+        - encPrivKey
+      type: object
+    UserListItemDto:
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+        id:
+          type: string
+        username:
+          type: string
+      required:
+        - id
+        - username
+        - email
+      type: object
+    UserListResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/UserListResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        users:
+          items:
+            $ref: "#/components/schemas/UserListItemDto"
+          type: array
+      required:
+        - users
+      type: object
+info:
+  title: Secure chat API
+  version: 1.0.0
+openapi: 3.1.0
+paths:
+  /auth/login:
+    post:
+      operationId: post-auth-login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequestBody"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Post auth login
+  /auth/register:
+    post:
+      operationId: post-auth-register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequestBody"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Post auth register
+  /chats:
+    get:
+      operationId: get-chats
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetChatsResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get chats
+  /users/list:
+    get:
+      operationId: get-users-list
+      parameters:
+        - explode: false
+          in: query
+          name: query
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get users list
+  /users{userId}/add-to-chat:
+    post:
+      operationId: post-usersby-user-id-add-to-chat
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Post usersby user ID add to chat
