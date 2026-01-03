@@ -40,4 +40,6 @@ func fetchChats(c *client.ClientWithResponses) error {
 
 func ClearDataState() {
 	Chats = []client.ChatDto{}
+	CurrentChatUserId = ""
+	currentChatKey = []byte{}
 }
