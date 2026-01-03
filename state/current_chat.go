@@ -34,7 +34,7 @@ func EncryptCurrentChat(userId, msg string) (string, string, error) {
 		return "", "", nonceErr
 	}
 
-	enc := aead.Seal(nil, nil, []byte(msg), nil)
+	enc := aead.Seal(nil, nonce, []byte(msg), nil)
 	return base64.StdEncoding.EncodeToString(enc), base64.StdEncoding.EncodeToString(nonce), nil
 }
 
@@ -90,7 +90,7 @@ func createChatKey(pubKey []byte, privKey []byte) ([]byte, error) {
 		nil,
 	)
 
-	key := make([]byte, 32)
+	key := make([]byte, chacha20poly1305.KeySize)
 	_, err := io.ReadFull(derivedChatKey, key)
-	return nil, err
+	return key, err
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"log"
+	"log/slog"
 	"net/http"
 	"secure-chat-client/env"
 	"sync"
@@ -58,7 +58,7 @@ func SendMessage(msg []byte) {
 	select {
 	case sendChan <- msg:
 	default:
-		log.Println("Send channel full, dropping message")
+		slog.Info("Send channel full, dropping message")
 	}
 }
 
@@ -71,7 +71,7 @@ func readLoop() {
 	for {
 		_, msg, err := wsConn.ReadMessage()
 		if err != nil {
-			log.Println("WebSocket read error:", err)
+			slog.Error("WebSocket read error:", err)
 			close(closeChan)
 			return
 		}
@@ -79,20 +79,20 @@ func readLoop() {
 		var m WsNewMessageRecieved
 		unmarshalErr := json.Unmarshal(msg, &m)
 		if unmarshalErr != nil {
-			log.Println("WebSocket unmarshal error:", unmarshalErr)
+			slog.Error("WebSocket unmarshal error:", unmarshalErr)
 		} else {
 			str, strErr := json.Marshal(m)
 			if strErr != nil {
-				log.Println("WebSocket marshal error:", strErr)
+				slog.Error("WebSocket marshal error:", strErr)
 			} else {
-				log.Println("WebSocket received:", string(str))
+				slog.Info("WebSocket received:", string(str))
 			}
 		}
 
 		select {
 		case recvChan <- msg:
 		default:
-			log.Println("Receive channel full, dropping message")
+			slog.Warn("Receive channel full, dropping message")
 		}
 	}
 }
@@ -103,7 +103,7 @@ func writeLoop() {
 		select {
 		case msg := <-sendChan:
 			if err := wsConn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				log.Println("WebSocket write error:", err)
+				slog.Error("WebSocket write error:", err)
 				return
 			}
 		case <-closeChan:
