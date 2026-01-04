@@ -21,6 +21,7 @@ type WsSendNewMessage struct {
 type WsNewMessageRecieved struct {
 	FromUserID         uuid.UUID `json:"fromUserId"`
 	CipherText         string    `json:"cipherText"`
+	Nonce              string    `json:"nonce"`
 	SenderIdentityId   string    `json:"senderIdentityId"`
 	ReceiverIdentityId string    `json:"ReceiverIdentityId"`
 }
