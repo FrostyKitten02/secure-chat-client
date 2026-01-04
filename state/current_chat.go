@@ -39,10 +39,15 @@ func EncryptCurrentChat(userId, msg string) (string, string, error) {
 	return base64.StdEncoding.EncodeToString(enc), base64.StdEncoding.EncodeToString(nonce), nil
 }
 
-func DecryptWsMessage(recieved WsNewMessageRecieved) (string, error) {
-	nonce, nonceErr := base64.StdEncoding.DecodeString(recieved.Nonce)
+func DecryptMessage(nonceBase64, cipherTextBase64 string) (string, error) {
+	nonce, nonceErr := base64.StdEncoding.DecodeString(nonceBase64)
 	if nonceErr != nil {
 		return "", nonceErr
+	}
+
+	cipherText, cipherTextErr := base64.StdEncoding.DecodeString(cipherTextBase64)
+	if cipherTextErr != nil {
+		return "", cipherTextErr
 	}
 
 	//FIXME: optimistic decryption for current chatter only!
@@ -50,17 +55,16 @@ func DecryptWsMessage(recieved WsNewMessageRecieved) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	cipherText, cipherTextErr := base64.StdEncoding.DecodeString(recieved.CipherText)
-	if cipherTextErr != nil {
-		return "", cipherTextErr
-	}
 	plainText, decErr := aead.Open(nil, nonce, cipherText, nil)
 	if decErr != nil {
 		return "", decErr
 	}
 
 	return string(plainText), nil
+}
+
+func DecryptWsMessage(recieved WsNewMessageRecieved) (string, error) {
+	return DecryptMessage(recieved.Nonce, recieved.CipherText)
 }
 
 func SetCurrentChat(chat client.ChatDto) error {

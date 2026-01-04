@@ -189,6 +189,17 @@ func Start() {
 			err := state.SetCurrentChat(state.Chats[i])
 			if err != nil {
 				dialog.ShowError(err, w)
+				return
+			}
+
+			msgs, histErr := service.GetCurrentChatHistory()
+			if histErr != nil {
+				dialog.ShowError(histErr, w)
+				return
+			}
+
+			for _, msg := range msgs {
+				addMessage(msg.PlainText, msg.FromUsername)
 			}
 		}
 

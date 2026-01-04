@@ -28,6 +28,20 @@ components:
         - identityId
         - pubKey
       type: object
+    DirectMessage:
+      additionalProperties: false
+      properties:
+        cipherText:
+          type: string
+        fromUserId:
+          type: string
+        nonce:
+          type: string
+      required:
+        - fromUserId
+        - cipherText
+        - nonce
+      type: object
     ErrorDetail:
       additionalProperties: false
       properties:
@@ -84,6 +98,28 @@ components:
             - https://example.com/errors/example
           format: uri
           type: string
+      type: object
+    GetChatHistoryResponseBody:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/GetChatHistoryResponseBody.json
+          format: uri
+          readOnly: true
+          type: string
+        directMessages:
+          items:
+            $ref: "#/components/schemas/DirectMessage"
+          type: array
+        fromUser:
+          items:
+            $ref: "#/components/schemas/ChatUserDto"
+          type: array
+      required:
+        - directMessages
+        - fromUser
       type: object
     GetChatsResponseBody:
       additionalProperties: false
@@ -275,6 +311,29 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       summary: Get chats
+  /chats/history/by-user/{userId}:
+    get:
+      operationId: get-chats-history-by-user-by-user-id
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetChatHistoryResponseBody"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      summary: Get chats history by user by user ID
   /users/list:
     get:
       operationId: get-users-list
