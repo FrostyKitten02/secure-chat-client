@@ -21,6 +21,7 @@ type WsSendNewMessage struct {
 type WsNewMessageRecieved struct {
 	FromUserID         uuid.UUID `json:"fromUserId"`
 	CipherText         string    `json:"cipherText"`
+	Nonce              string    `json:"nonce"`
 	SenderIdentityId   string    `json:"senderIdentityId"`
 	ReceiverIdentityId string    `json:"ReceiverIdentityId"`
 }
@@ -35,6 +36,7 @@ var (
 
 func ConnectWebSocket(token string) error {
 	var err error
+	//we should not use once.Do since, we can logout and log back in!!
 	once.Do(func() {
 		header := http.Header{}
 		header.Set("Authorization", "Bearer "+token)

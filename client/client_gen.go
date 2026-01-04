@@ -30,6 +30,13 @@ type ChatUserDto struct {
 	Username   string `json:"username"`
 }
 
+// DirectMessage defines model for DirectMessage.
+type DirectMessage struct {
+	CipherText string `json:"cipherText"`
+	FromUserId string `json:"fromUserId"`
+	Nonce      string `json:"nonce"`
+}
+
 // ErrorDetail defines model for ErrorDetail.
 type ErrorDetail struct {
 	// Location Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
@@ -64,6 +71,14 @@ type ErrorModel struct {
 
 	// Type A URI reference to human-readable documentation for the error.
 	Type *string `json:"type,omitempty"`
+}
+
+// GetChatHistoryResponseBody defines model for GetChatHistoryResponseBody.
+type GetChatHistoryResponseBody struct {
+	// Schema A URL to the JSON Schema for this object.
+	Schema         *string         `json:"$schema,omitempty"`
+	DirectMessages []DirectMessage `json:"directMessages"`
+	FromUser       []ChatUserDto   `json:"fromUser"`
 }
 
 // GetChatsResponseBody defines model for GetChatsResponseBody.
@@ -215,6 +230,9 @@ type ClientInterface interface {
 	// GetChats request
 	GetChats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetChatsHistoryByUserByUserId request
+	GetChatsHistoryByUserByUserId(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetUsersList request
 	GetUsersList(ctx context.Context, params *GetUsersListParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -272,6 +290,18 @@ func (c *Client) PostAuthRegister(ctx context.Context, body PostAuthRegisterJSON
 
 func (c *Client) GetChats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetChatsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetChatsHistoryByUserByUserId(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetChatsHistoryByUserByUserIdRequest(c.Server, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -396,6 +426,40 @@ func NewGetChatsRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/chats")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetChatsHistoryByUserByUserIdRequest generates requests for GetChatsHistoryByUserByUserId
+func NewGetChatsHistoryByUserByUserIdRequest(server string, userId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "userId", runtime.ParamLocationPath, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/chats/history/by-user/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -552,6 +616,9 @@ type ClientWithResponsesInterface interface {
 	// GetChatsWithResponse request
 	GetChatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetChatsResponse, error)
 
+	// GetChatsHistoryByUserByUserIdWithResponse request
+	GetChatsHistoryByUserByUserIdWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetChatsHistoryByUserByUserIdResponse, error)
+
 	// GetUsersListWithResponse request
 	GetUsersListWithResponse(ctx context.Context, params *GetUsersListParams, reqEditors ...RequestEditorFn) (*GetUsersListResponse, error)
 
@@ -621,6 +688,29 @@ func (r GetChatsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetChatsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetChatsHistoryByUserByUserIdResponse struct {
+	Body                          []byte
+	HTTPResponse                  *http.Response
+	JSON200                       *GetChatHistoryResponseBody
+	ApplicationproblemJSONDefault *ErrorModel
+}
+
+// Status returns HTTPResponse.Status
+func (r GetChatsHistoryByUserByUserIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetChatsHistoryByUserByUserIdResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -713,6 +803,15 @@ func (c *ClientWithResponses) GetChatsWithResponse(ctx context.Context, reqEdito
 		return nil, err
 	}
 	return ParseGetChatsResponse(rsp)
+}
+
+// GetChatsHistoryByUserByUserIdWithResponse request returning *GetChatsHistoryByUserByUserIdResponse
+func (c *ClientWithResponses) GetChatsHistoryByUserByUserIdWithResponse(ctx context.Context, userId string, reqEditors ...RequestEditorFn) (*GetChatsHistoryByUserByUserIdResponse, error) {
+	rsp, err := c.GetChatsHistoryByUserByUserId(ctx, userId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetChatsHistoryByUserByUserIdResponse(rsp)
 }
 
 // GetUsersListWithResponse request returning *GetUsersListResponse
@@ -808,6 +907,39 @@ func ParseGetChatsResponse(rsp *http.Response) (*GetChatsResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest GetChatsResponseBody
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest ErrorModel
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetChatsHistoryByUserByUserIdResponse parses an HTTP response from a GetChatsHistoryByUserByUserIdWithResponse call
+func ParseGetChatsHistoryByUserByUserIdResponse(rsp *http.Response) (*GetChatsHistoryByUserByUserIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetChatsHistoryByUserByUserIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetChatHistoryResponseBody
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

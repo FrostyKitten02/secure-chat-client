@@ -42,4 +42,5 @@ func ClearDataState() {
 	Chats = []client.ChatDto{}
 	CurrentChatUserId = ""
 	currentChatKey = []byte{}
+	CurrentChatUser = client.ChatUserDto{}
 }

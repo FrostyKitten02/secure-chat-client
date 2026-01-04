@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"fyne.io/fyne/v2"
@@ -9,6 +10,8 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/google/uuid"
+	"log/slog"
 	"secure-chat-client/auth"
 	"secure-chat-client/client"
 	"secure-chat-client/service"
@@ -117,22 +120,52 @@ func Start() {
 		chatLabel := widget.NewLabel("Select a user to start chatting")
 		chatLabel.Wrapping = fyne.TextWrapWord
 
-		chatScroll := container.NewVScroll(chatLabel)
+		chatContent := container.NewVBox()
+		chatScroll := container.NewVScroll(chatContent)
+
+		addMessage := func(message string, from string) {
+			label := widget.NewLabel(from + ": " + message)
+			label.Wrapping = fyne.TextWrapWord
+
+			chatContent.Add(label)
+			chatContent.Refresh()
+			chatScroll.ScrollToBottom()
+		}
+		go func(chatContent *fyne.Container, addMsg func(message, from string)) {
+			for msgBytes := range state.Subscribe() {
+				var msg state.WsNewMessageRecieved
+				err := json.Unmarshal(msgBytes, &msg)
+				if err != nil {
+					slog.Error(err.Error())
+					continue
+				}
+
+				if state.CurrentChatUserId != "" && msg.FromUserID != uuid.Nil && msg.FromUserID.String() == state.CurrentChatUserId {
+					plainText, decErr := state.DecryptWsMessage(msg)
+					if decErr != nil {
+						slog.Error(decErr.Error())
+						continue
+					}
+					fyne.Do(func() {
+						addMsg(plainText, state.CurrentChatUser.Username)
+					})
+				}
+			}
+		}(chatContent, addMessage)
 
 		messageEntry := widget.NewEntry()
 		messageEntry.SetPlaceHolder("Type a message...")
 
 		sendButton := widget.NewButton("Send", func() {
-			//TODO: implement!!!
 			if messageEntry.Text == "" {
 				return
 			}
-			err := service.SendMessage(state.CurrentChatUserId, "test message")
+			err := service.SendMessage(state.CurrentChatUserId, messageEntry.Text)
 			if err != nil {
 				dialog.ShowError(err, w)
 				return
 			}
-
+			addMessage(messageEntry.Text, "You")
 			messageEntry.SetText("")
 		})
 
@@ -156,6 +189,17 @@ func Start() {
 			err := state.SetCurrentChat(state.Chats[i])
 			if err != nil {
 				dialog.ShowError(err, w)
+				return
+			}
+
+			msgs, histErr := service.GetCurrentChatHistory()
+			if histErr != nil {
+				dialog.ShowError(histErr, w)
+				return
+			}
+
+			for _, msg := range msgs {
+				addMessage(msg.PlainText, msg.FromUsername)
 			}
 		}
 

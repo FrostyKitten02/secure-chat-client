@@ -15,6 +15,7 @@ import (
 
 var currentChatKey []byte = []byte{}
 var CurrentChatUserId string = ""
+var CurrentChatUser client.ChatUserDto = client.ChatUserDto{}
 
 // returns encrypted msg and nonce
 func EncryptCurrentChat(userId, msg string) (string, string, error) {
@@ -36,6 +37,34 @@ func EncryptCurrentChat(userId, msg string) (string, string, error) {
 
 	enc := aead.Seal(nil, nonce, []byte(msg), nil)
 	return base64.StdEncoding.EncodeToString(enc), base64.StdEncoding.EncodeToString(nonce), nil
+}
+
+func DecryptMessage(nonceBase64, cipherTextBase64 string) (string, error) {
+	nonce, nonceErr := base64.StdEncoding.DecodeString(nonceBase64)
+	if nonceErr != nil {
+		return "", nonceErr
+	}
+
+	cipherText, cipherTextErr := base64.StdEncoding.DecodeString(cipherTextBase64)
+	if cipherTextErr != nil {
+		return "", cipherTextErr
+	}
+
+	//FIXME: optimistic decryption for current chatter only!
+	aead, err := chacha20poly1305.New(currentChatKey)
+	if err != nil {
+		return "", err
+	}
+	plainText, decErr := aead.Open(nil, nonce, cipherText, nil)
+	if decErr != nil {
+		return "", decErr
+	}
+
+	return string(plainText), nil
+}
+
+func DecryptWsMessage(recieved WsNewMessageRecieved) (string, error) {
+	return DecryptMessage(recieved.Nonce, recieved.CipherText)
 }
 
 func SetCurrentChat(chat client.ChatDto) error {
@@ -63,6 +92,7 @@ func SetCurrentChat(chat client.ChatDto) error {
 
 	CurrentChatUserId = chat.User.UserId
 	currentChatKey = key
+	CurrentChatUser = chat.User
 	return nil
 }
 
